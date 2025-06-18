@@ -99,7 +99,8 @@ class TelegramMediaDownloader:
                 # Mensagem desconhecida
                 entry = f"[{timestamp}] {sender_info}: [mensagem não suportada]\n"
 
-            entry += "-" * 80 + "\n"
+            # Adicionar separador visual mais espaçado
+            entry += "\n" + "─" * 100 + "\n\n"
             with open(conversation_file, 'a', encoding='utf-8') as f:
                 f.write(entry)
             return conversation_file
@@ -125,21 +126,80 @@ class TelegramMediaDownloader:
         """Descreve a ação de serviço de forma legível"""
         try:
             action = message.action
-            # Exemplos comuns
-            if hasattr(action, 'user_id'):
-                user_id = action.user_id
-                user_name = self.get_user_info(user_id)
-                if action.__class__.__name__ == 'MessageActionChatAddUser':
-                    return f"{user_name} foi adicionado ao grupo"
-                if action.__class__.__name__ == 'MessageActionChatJoinedByLink':
-                    return f"{user_name} entrou no grupo via link de convite"
-                if action.__class__.__name__ == 'MessageActionChatDeleteUser':
-                    return f"{user_name} saiu do grupo"
-            # Outros tipos
-            return str(action)
+            action_type = action.__class__.__name__
+            
+            # Mensagens de entrada no grupo
+            if action_type == 'MessageActionChatJoinedByLink':
+                return "👋 Alguém entrou no grupo via link de convite"
+            elif action_type == 'MessageActionChatAddUser':
+                if hasattr(action, 'user_id'):
+                    user_name = self.get_user_info(action.user_id)
+                    return f"👋 {user_name} foi adicionado ao grupo"
+                else:
+                    return "👋 Alguém foi adicionado ao grupo"
+            
+            # Mensagens de saída do grupo
+            elif action_type == 'MessageActionChatDeleteUser':
+                if hasattr(action, 'user_id'):
+                    user_name = self.get_user_info(action.user_id)
+                    return f"👋 {user_name} saiu do grupo"
+                else:
+                    return "👋 Alguém saiu do grupo"
+            
+            # Mudanças de título
+            elif action_type == 'MessageActionChatEditTitle':
+                if hasattr(action, 'title'):
+                    return f"📝 Título do grupo alterado para: {action.title}"
+                else:
+                    return "📝 Título do grupo foi alterado"
+            
+            # Mudanças de foto
+            elif action_type == 'MessageActionChatEditPhoto':
+                return "🖼️ Foto do grupo foi alterada"
+            
+            # Mudanças de descrição
+            elif action_type == 'MessageActionChannelEditInfo':
+                return "📝 Informações do canal foram alteradas"
+            
+            # Pinned messages
+            elif action_type == 'MessageActionPinMessage':
+                return "📌 Uma mensagem foi fixada"
+            
+            # Game scores
+            elif action_type == 'MessageActionGameScore':
+                return "🎮 Pontuação de jogo atualizada"
+            
+            # Payment
+            elif action_type == 'MessageActionPaymentSent':
+                return "💳 Pagamento enviado"
+            
+            # Screenshot
+            elif action_type == 'MessageActionScreenshotTaken':
+                return "📸 Screenshot tirado"
+            
+            # Phone call
+            elif action_type == 'MessageActionPhoneCall':
+                return "📞 Chamada telefônica"
+            
+            # Custom action
+            elif action_type == 'MessageActionCustomAction':
+                if hasattr(action, 'message'):
+                    return f"⚙️ {action.message}"
+                else:
+                    return "⚙️ Ação personalizada"
+            
+            # Outros tipos - tentar extrair informações úteis
+            else:
+                # Tentar extrair user_id se disponível
+                if hasattr(action, 'user_id') and action.user_id:
+                    user_name = self.get_user_info(action.user_id)
+                    return f"⚙️ {user_name} realizou uma ação no grupo"
+                else:
+                    return f"⚙️ Ação de serviço: {action_type}"
+                    
         except Exception as e:
             logger.debug(f"Erro ao descrever ação de serviço: {e}")
-            return "[ação de serviço]"
+            return "⚙️ Ação de serviço no grupo"
 
     async def download_media_from_chat(self, chat_entity, limit=None):
         try:
@@ -328,9 +388,11 @@ class TelegramMediaDownloader:
             # Só criar cabeçalho se o arquivo não existir
             if not os.path.exists(conversation_file):
                 header = f"""
-{'='*80}
-CONVERSA: {chat_name}
-{'='*80}
+{'═' * 100}
+{'═' * 100}
+                    CONVERSA: {chat_name}
+{'═' * 100}
+{'═' * 100}
 
 """
                 with open(conversation_file, 'w', encoding='utf-8') as f:
